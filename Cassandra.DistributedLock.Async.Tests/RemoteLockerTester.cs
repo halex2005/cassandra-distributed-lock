@@ -33,8 +33,8 @@ namespace Cassandra.DistributedLock.Async.Tests
             var lwTransactionsImplementationSettings = new LightweightTransactionsAsyncLockImplementationSettings(timestampProvider, SingleCassandraNodeSetUpFixture.RemoteLockKeyspace + "_" + lockImpl, SingleCassandraNodeSetUpFixture.RemoteLockColumnFamily, config.LockTtl, config.LockMetadataTtl, config.KeepLockAliveInterval, config.ChangeLockRowThreshold);
             IRemoteAsyncLockImplementation cassandraRemoteLockImplementation = lockImpl switch
                 {
-                    LockImplementationToTest.TwoPhaseCommit => new TwoPhaseCommitAsyncLockImplementation(cassandraCluster, implementationSettings, logger),
-                    LockImplementationToTest.LightweightTransactions => new LightweightTransactionsAsyncLockImplementation(cassandraCluster, lwTransactionsImplementationSettings, logger),
+                    LockImplementationToTest.TwoPhaseCommit => new TwoPhaseCommitAsyncLockImplementation(cassandraCluster, implementationSettings),
+                    LockImplementationToTest.LightweightTransactions => new LightweightTransactionsAsyncLockImplementation(cassandraCluster, lwTransactionsImplementationSettings),
                     _ => throw new InvalidOperationException($"unknown lock implementation={lockImpl}")
                 };
             
@@ -52,8 +52,8 @@ namespace Cassandra.DistributedLock.Async.Tests
                 {
                     IRemoteAsyncLockImplementation asyncLockImplementationForChecks = lockImpl switch
                         {
-                            LockImplementationToTest.TwoPhaseCommit => new TwoPhaseCommitAsyncLockImplementation(cassandraCluster, implementationSettings, logger),
-                            LockImplementationToTest.LightweightTransactions => new LightweightTransactionsAsyncLockImplementation(cassandraCluster, lwTransactionsImplementationSettings, logger),
+                            LockImplementationToTest.TwoPhaseCommit => new TwoPhaseCommitAsyncLockImplementation(cassandraCluster, implementationSettings),
+                            LockImplementationToTest.LightweightTransactions => new LightweightTransactionsAsyncLockImplementation(cassandraCluster, lwTransactionsImplementationSettings),
                             _ => throw new InvalidOperationException($"unknown lock implementation={lockImpl}")
                         };
                     remoteLockers[i] = new RemoteAsyncLocker(asyncLockImplementationForChecks, remoteLockerMetrics, logger);
@@ -62,8 +62,8 @@ namespace Cassandra.DistributedLock.Async.Tests
             // it is important to use another CassandraCluster (with another setting of attempts, for example)
             cassandraRemoteLockImplementationForChecks = lockImpl switch
                 {
-                    LockImplementationToTest.LightweightTransactions => new LightweightTransactionsAsyncLockImplementation(CassandraCluster.CreateFromConnectionString(SingleCassandraNodeSetUpFixture.CreateCassandraClusterSettings()), lwTransactionsImplementationSettings, logger),
-                    LockImplementationToTest.TwoPhaseCommit => new TwoPhaseCommitAsyncLockImplementation(CassandraCluster.CreateFromConnectionString(SingleCassandraNodeSetUpFixture.CreateCassandraClusterSettings()), implementationSettings, logger),
+                    LockImplementationToTest.LightweightTransactions => new LightweightTransactionsAsyncLockImplementation(CassandraCluster.CreateFromConnectionString(SingleCassandraNodeSetUpFixture.CreateCassandraClusterSettings()), lwTransactionsImplementationSettings),
+                    LockImplementationToTest.TwoPhaseCommit => new TwoPhaseCommitAsyncLockImplementation(CassandraCluster.CreateFromConnectionString(SingleCassandraNodeSetUpFixture.CreateCassandraClusterSettings()), implementationSettings),
                     _ => null
                 };
         }

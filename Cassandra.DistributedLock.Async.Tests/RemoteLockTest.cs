@@ -52,8 +52,8 @@ namespace Cassandra.DistributedLock.Async.Tests
                 10);
             remoteLockImplementation = lockImpl switch
                {
-                   LockImplementationToTest.LightweightTransactions => new LightweightTransactionsAsyncLockImplementation(cassandraCluster, lwtSettings, logger),
-                   LockImplementationToTest.TwoPhaseCommit => new TwoPhaseCommitAsyncLockImplementation(cassandraCluster, settings, logger),
+                   LockImplementationToTest.LightweightTransactions => new LightweightTransactionsAsyncLockImplementation(cassandraCluster, lwtSettings),
+                   LockImplementationToTest.TwoPhaseCommit => new TwoPhaseCommitAsyncLockImplementation(cassandraCluster, settings),
                    _ => throw new InvalidOperationException("")
                };
         }

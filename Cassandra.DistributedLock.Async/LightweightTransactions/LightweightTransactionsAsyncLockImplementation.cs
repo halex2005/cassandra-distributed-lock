@@ -5,23 +5,17 @@ using JetBrains.Annotations;
 
 using SkbKontur.Cassandra.DistributedLock.Async.Cluster;
 
-using Vostok.Logging.Abstractions;
-
 namespace SkbKontur.Cassandra.DistributedLock.Async.LightweightTransactions
 {
     public class LightweightTransactionsAsyncLockImplementation : IRemoteAsyncLockImplementation
     {
-        private readonly ILog logger;
-
         public LightweightTransactionsAsyncLockImplementation(
             ICassandraCluster cassandraCluster,
-            LightweightTransactionsAsyncLockImplementationSettings settings,
-            ILog logger)
+            LightweightTransactionsAsyncLockImplementationSettings settings)
         {
-            this.logger = logger.ForContext<LightweightTransactionsAsyncLockImplementation>();
             lockTtl = settings.LockTtl;
             KeepLockAliveInterval = settings.KeepLockAliveInterval;
-            baseAsyncOperationsPerformer = new LightweightTransactionsAsyncLockOperationsPerformer(cassandraCluster, settings, logger);
+            baseAsyncOperationsPerformer = new LightweightTransactionsAsyncLockOperationsPerformer(cassandraCluster, settings);
         }
 
         public TimeSpan KeepLockAliveInterval { get; }

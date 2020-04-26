@@ -10,20 +10,14 @@ using JetBrains.Annotations;
 
 using SkbKontur.Cassandra.DistributedLock.Async.Cluster;
 
-using Vostok.Logging.Abstractions;
-
 namespace SkbKontur.Cassandra.DistributedLock.Async.LightweightTransactions
 {
     internal class LightweightTransactionsAsyncLockOperationsPerformer
     {
-        private readonly ILog logger;
-
         public LightweightTransactionsAsyncLockOperationsPerformer(
             ICassandraCluster cassandraCluster,
-            LightweightTransactionsAsyncLockImplementationSettings settings,
-            ILog logger)
+            LightweightTransactionsAsyncLockImplementationSettings settings)
         {
-            this.logger = logger.ForContext<LightweightTransactionsAsyncLockOperationsPerformer>();
             cassandraClient = new CassandraClient(
                 cassandraCluster.RetrieveKeyspaceConnection(settings.KeyspaceName),
                 new LockEntityColumnMappings(settings.TableName));
@@ -94,7 +88,6 @@ namespace SkbKontur.Cassandra.DistributedLock.Async.LightweightTransactions
 
         public async Task<bool> DeleteThread([NotNull] string lockRowId, [NotNull] string threadId)
         {
-            logger.Info($"Delete thread (Lock={lockRowId})");
             var appliedInfo = await cassandraClient
                 .MakeInConnectionAsync(
                     (Table<LockRowEntity> table) => table

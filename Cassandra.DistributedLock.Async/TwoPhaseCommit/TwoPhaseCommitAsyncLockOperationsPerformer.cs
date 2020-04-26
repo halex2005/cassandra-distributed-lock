@@ -11,20 +11,14 @@ using JetBrains.Annotations;
 
 using SkbKontur.Cassandra.DistributedLock.Async.Cluster;
 
-using Vostok.Logging.Abstractions;
-
 namespace SkbKontur.Cassandra.DistributedLock.Async.TwoPhaseCommit
 {
     internal class TwoPhaseCommitAsyncLockOperationsPerformer
     {
-        private readonly ILog logger;
-
         public TwoPhaseCommitAsyncLockOperationsPerformer(
             ICassandraCluster cassandraCluster,
-            TwoPhaseCommitAsyncLockImplementationSettings settings,
-            ILog logger)
+            TwoPhaseCommitAsyncLockImplementationSettings settings)
         {
-            this.logger = logger.ForContext<TwoPhaseCommitAsyncLockOperationsPerformer>();
             cassandraClient = new CassandraClient(
                 cassandraCluster.RetrieveKeyspaceConnection(settings.KeyspaceName),
                 new LockEntityColumnMappings(settings.TableName));
@@ -38,7 +32,6 @@ namespace SkbKontur.Cassandra.DistributedLock.Async.TwoPhaseCommit
             {
                 return WriteMainThreadAndMetadata(lockRowId, threadId, lockStatus, ttl);
             }
-            logger.Info($"Write thread {lockStatus} (Lock={lockRowId}, Thread={threadId})");
             return cassandraClient.MakeInConnectionAsync(
                 (Table<LockRowEntity> table) => table
                     .Insert(new LockRowEntity
@@ -59,8 +52,6 @@ namespace SkbKontur.Cassandra.DistributedLock.Async.TwoPhaseCommit
             var timestamp = new DateTimeOffset(GetNowTicks(), TimeSpan.Zero);
             var entityTable = await cassandraClient.GetTableAsync<LockRowEntity>().ConfigureAwait(false);
             var entityMetadataTable = await cassandraClient.GetTableAsync<LockMetadataEntity>().ConfigureAwait(false);
-
-            logger.Info($"Write lock and metadata (Lock={lockRowId}, Thread={threadId}");
 
             var session = cassandraClient.Session.CreateBatch(BatchType.Unlogged);
 
@@ -92,7 +83,6 @@ namespace SkbKontur.Cassandra.DistributedLock.Async.TwoPhaseCommit
 
         public Task DeleteThread([NotNull] string lockRowId, [NotNull] string threadId)
         {
-            logger.Info($"Delete thread (Lock={lockRowId}, Thread={threadId})");
             return cassandraClient.MakeInConnectionAsync(
                 (Table<LockRowEntity> table) => table
                     .Where(x => x.LockId == lockRowId && x.ThreadId == threadId)

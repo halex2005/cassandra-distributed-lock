@@ -7,23 +7,17 @@ using JetBrains.Annotations;
 using SkbKontur.Cassandra.DistributedLock.Async.Cluster;
 using SkbKontur.Cassandra.TimeBasedUuid;
 
-using Vostok.Logging.Abstractions;
-
 namespace SkbKontur.Cassandra.DistributedLock.Async.TwoPhaseCommit
 {
     public class TwoPhaseCommitAsyncLockImplementation : IRemoteAsyncLockImplementation
     {
-        private readonly ILog logger;
-
         public TwoPhaseCommitAsyncLockImplementation(
             ICassandraCluster cassandraCluster,
-            TwoPhaseCommitAsyncLockImplementationSettings settings,
-            ILog logger)
+            TwoPhaseCommitAsyncLockImplementationSettings settings)
         {
-            this.logger = logger;
             lockTtl = settings.LockTtl;
             KeepLockAliveInterval = settings.KeepLockAliveInterval;
-            baseAsyncOperationsPerformer = new TwoPhaseCommitAsyncLockOperationsPerformer(cassandraCluster, settings, logger);
+            baseAsyncOperationsPerformer = new TwoPhaseCommitAsyncLockOperationsPerformer(cassandraCluster, settings);
         }
 
         public TimeSpan KeepLockAliveInterval { get; }
