@@ -30,7 +30,8 @@ namespace Cassandra.DistributedLock.Async.Tests
             node.Restart(timeout : TimeSpan.FromMinutes(1));
 
             cassandraCluster = CassandraCluster.CreateFromConnectionString(CreateCassandraClusterSettings());
-            cassandraCluster.CreateKeyspaceIfNotExists(RemoteLockKeyspace);
+            cassandraCluster.CreateKeyspaceIfNotExists(RemoteLockKeyspace + "_" + LockImplementationToTest.TwoPhaseCommit);
+            cassandraCluster.CreateKeyspaceIfNotExists(RemoteLockKeyspace + "_" + LockImplementationToTest.LightweightTransactions);
         }
 
         [OneTimeTearDown]
@@ -71,6 +72,8 @@ namespace Cassandra.DistributedLock.Async.Tests
         }
 
         public const string RemoteLockKeyspace = "TestRemoteLockKeyspace";
+        public static string RemoteLockKeyspaceLightweightTransactions = RemoteLockKeyspace + "_" + LockImplementationToTest.LightweightTransactions;
+        public static string RemoteLockKeyspaceTwoPhaseCommit = RemoteLockKeyspace + "_" + LockImplementationToTest.TwoPhaseCommit;
         public const string RemoteLockColumnFamily = "TestRemoteLockCf";
 
         private const string cassandraTemplates = @"cassandra-local\cassandra";

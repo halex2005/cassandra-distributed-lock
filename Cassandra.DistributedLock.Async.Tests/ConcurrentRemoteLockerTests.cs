@@ -13,8 +13,17 @@ using SkbKontur.Cassandra.TimeBasedUuid;
 
 namespace Cassandra.DistributedLock.Async.Tests
 {
+    [TestFixture(LockImplementationToTest.TwoPhaseCommit)]
+    [TestFixture(LockImplementationToTest.LightweightTransactions)]
     public class ConcurrentRemoteLockerTests
     {
+        private readonly LockImplementationToTest lockImpl;
+
+        public ConcurrentRemoteLockerTests(LockImplementationToTest lockImpl)
+        {
+            this.lockImpl = lockImpl;
+        }
+
         [SetUp]
         public void SetUp()
         {
@@ -148,7 +157,7 @@ namespace Cassandra.DistributedLock.Async.Tests
                 });
         }
 
-        private static void DoTest(TestConfig cfg)
+        private void DoTest(TestConfig cfg)
         {
             var cassandraOpTimeout = cfg.TesterConfig.Timeout;
             var longOpDuration = cfg.TesterConfig.LockTtl.Add(cassandraOpTimeout).Multiply(cfg.TesterConfig.Attempts);
@@ -156,7 +165,7 @@ namespace Cassandra.DistributedLock.Async.Tests
             var resources = new ConcurrentDictionary<string, Guid>();
             var opsCounters = new ConcurrentDictionary<string, int>();
             var allowFails = cfg.TesterConfig.CassandraFailProbability.HasValue;
-            using (var tester = new RemoteLockerTester(cfg.TesterConfig))
+            using (var tester = new RemoteLockerTester(lockImpl, cfg.TesterConfig))
             {
                 var stopSignal = new ManualResetEvent(false);
                 var syncSignal = new ManualResetEvent(true);
@@ -203,11 +212,15 @@ namespace Cassandra.DistributedLock.Async.Tests
                                     else if (ThreadLocalRandom.Instance.NextDouble() < cfg.LongRunningOpProbability)
                                         opDuration = opDuration.Add(longOpDuration);
                                     Thread.Sleep(opDuration);
-                                    CollectionAssert.AreEqual(new[] {@lock.ThreadId}, localTester.GetThreadsInMainRow(lockId).GetAwaiter().GetResult());
-                                    var threadsInShadeRow = localTester.GetThreadsInShadeRow(lockId).GetAwaiter().GetResult();
-                                    Assert.That(threadsInShadeRow, Does.Not.Contains(@lock.ThreadId));
-                                    var lockMetadata = localTester.GetLockMetadata(lockId).GetAwaiter().GetResult();
-                                    Assert.That(lockMetadata.ProbableOwnerThreadId, Is.EqualTo(@lock.ThreadId));
+                                    if (lockImpl != LockImplementationToTest.LightweightTransactions)
+                                    {
+                                        CollectionAssert.AreEqual(new[] {@lock.ThreadId}, localTester.GetThreadsInMainRow(lockId).GetAwaiter().GetResult());
+                                        var threadsInShadeRow = localTester.GetThreadsInShadeRow(lockId).GetAwaiter().GetResult();
+                                        Assert.That(threadsInShadeRow, Does.Not.Contains(@lock.ThreadId));
+
+                                        var lockMetadata = localTester.GetLockMetadata(lockId).GetAwaiter().GetResult();
+                                        Assert.That(lockMetadata.ProbableOwnerThreadId, Is.EqualTo(@lock.ThreadId));
+                                    }
                                     Assert.That(resources[lockId], Is.EqualTo(resource));
                                     Assert.That(opsCounters[lockId], Is.EqualTo(localOpsCounter));
                                     if (++localOpsCounter % (cfg.TesterConfig.LockersCount * cfg.OperationsPerThread / 100) == 0)
@@ -224,8 +237,8 @@ namespace Cassandra.DistributedLock.Async.Tests
                                     if (localTester.GetThreadsInMainRow(lockId).GetAwaiter().GetResult().Contains(@lock.ThreadId))
                                     {
                                         Assert.That(() => localTester.GetThreadsInMainRow(lockId), Is.Not
-                                                                                                     .Contains(@lock.ThreadId)
-                                                                                                     .After(2 * (int)cfg.TesterConfig.LockTtl.TotalMilliseconds, 100));
+                                            .Contains(@lock.ThreadId)
+                                            .After(2 * (int)cfg.TesterConfig.LockTtl.TotalMilliseconds, 100));
                                     }
                                     op++;
                                 }

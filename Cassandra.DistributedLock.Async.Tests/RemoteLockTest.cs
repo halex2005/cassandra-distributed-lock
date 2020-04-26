@@ -10,28 +10,52 @@ using NUnit.Framework;
 
 using SkbKontur.Cassandra.DistributedLock.Async;
 using SkbKontur.Cassandra.DistributedLock.Async.Cluster;
+using SkbKontur.Cassandra.DistributedLock.Async.LightweightTransactions;
 using SkbKontur.Cassandra.DistributedLock.Async.RemoteLocker;
 using SkbKontur.Cassandra.DistributedLock.Async.TwoPhaseCommit;
 
 using Vostok.Logging.Abstractions;
+using Vostok.Metrics;
 
 namespace Cassandra.DistributedLock.Async.Tests
 {
+    [TestFixture(LockImplementationToTest.LightweightTransactions)]
+    [TestFixture(LockImplementationToTest.TwoPhaseCommit)]
     public class RemoteLockTest
     {
-        [OneTimeSetUp]
+        private readonly LockImplementationToTest lockImpl;
+
+        public RemoteLockTest(LockImplementationToTest lockImpl)
+        {
+            this.lockImpl = lockImpl;
+        }
+
+        [SetUp]
         public void OneTimeSetUp()
         {
             var cassandraCluster = CassandraCluster.CreateFromConnectionString(SingleCassandraNodeSetUpFixture.CreateCassandraClusterSettings());
             var settings = new TwoPhaseCommitAsyncLockImplementationSettings(
                 new DefaultTimestampProvider(),
-                SingleCassandraNodeSetUpFixture.RemoteLockKeyspace,
+                SingleCassandraNodeSetUpFixture.RemoteLockKeyspaceTwoPhaseCommit,
+                SingleCassandraNodeSetUpFixture.RemoteLockKeyspace, 
+                TimeSpan.FromMinutes(3),
+                TimeSpan.FromDays(30),
+                TimeSpan.FromSeconds(5),
+                10);
+            var lwtSettings = new LightweightTransactionsAsyncLockImplementationSettings(
+                new DefaultTimestampProvider(),
+                SingleCassandraNodeSetUpFixture.RemoteLockKeyspaceLightweightTransactions,
                 SingleCassandraNodeSetUpFixture.RemoteLockColumnFamily, 
                 TimeSpan.FromMinutes(3),
                 TimeSpan.FromDays(30),
                 TimeSpan.FromSeconds(5),
                 10);
-            remoteLockImplementation = new TwoPhaseCommitAsyncLockImplementation(cassandraCluster, settings);
+            remoteLockImplementation = lockImpl switch
+               {
+                   LockImplementationToTest.LightweightTransactions => new LightweightTransactionsAsyncLockImplementation(cassandraCluster, lwtSettings, logger),
+                   LockImplementationToTest.TwoPhaseCommit => new TwoPhaseCommitAsyncLockImplementation(cassandraCluster, settings, logger),
+                   _ => throw new InvalidOperationException("")
+               };
         }
 
         [SetUp]
@@ -117,13 +141,16 @@ namespace Cassandra.DistributedLock.Async.Tests
         {
             try
             {
-                var locks = await remoteLockImplementation.GetLockThreads(lockId);
-                logger.Info("Locks: " + string.Join(", ", locks));
-                Assert.That(locks.Length <= 1, "Too many locks");
-                Assert.That(locks.Length == 1);
-                Assert.AreEqual(threadId, locks[0]);
-                var lockShades = remoteLockImplementation.GetShadeThreads(lockId);
-                logger.Info("LockShades: " + string.Join(", ", lockShades));
+                if (remoteLockImplementation is TwoPhaseCommitAsyncLockImplementation twoPhaseCommitImpl)
+                {
+                    var locks = await twoPhaseCommitImpl.GetLockThreads(lockId);
+                    logger.Info("Locks: " + string.Join(", ", locks));
+                    Assert.That(locks.Length <= 1, "Too many locks");
+                    Assert.That(locks.Length == 1);
+                    Assert.AreEqual(threadId, locks[0]);
+                    var lockShades = twoPhaseCommitImpl.GetShadeThreads(lockId);
+                    logger.Info("LockShades: " + string.Join(", ", lockShades));
+                }
             }
             catch (Exception e)
             {
@@ -187,10 +214,10 @@ namespace Cassandra.DistributedLock.Async.Tests
             }
         }
 
-        private static IRemoteAsyncLockCreator[] PrepareRemoteLockCreators(int threadCount, LocalRivalOptimization localRivalOptimization, TwoPhaseCommitAsyncLockImplementation remoteLockImplementation)
+        private static IRemoteAsyncLockCreator[] PrepareRemoteLockCreators(int threadCount, LocalRivalOptimization localRivalOptimization, IRemoteAsyncLockImplementation remoteLockImplementation)
         {
             var remoteLockCreators = new IRemoteAsyncLockCreator[threadCount];
-            var remoteLockerMetrics = new RemoteAsyncLockerMetrics("unknown", null);
+            var remoteLockerMetrics = new RemoteAsyncLockerMetrics("unknown", new DevNullMetricContext());
             if (localRivalOptimization == LocalRivalOptimization.Enabled)
             {
                 var singleRemoteLocker = new RemoteAsyncLocker(remoteLockImplementation, remoteLockerMetrics, logger);
@@ -214,7 +241,7 @@ namespace Cassandra.DistributedLock.Async.Tests
 
         private const string lockId = "IncDecLock";
         private int x;
-        private TwoPhaseCommitAsyncLockImplementation remoteLockImplementation;
+        private IRemoteAsyncLockImplementation remoteLockImplementation;
         private volatile bool isEnd;
         private int runningThreads;
         private List<Thread> threads;

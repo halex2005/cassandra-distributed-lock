@@ -15,6 +15,8 @@ namespace SkbKontur.Cassandra.DistributedLock.Async.Cluster
         private readonly MappingConfiguration mappingConfiguration;
         private readonly ConcurrentDictionary<Type, TableWrap> tableWraps = new ConcurrentDictionary<Type, TableWrap>();
 
+        public ISession Session => session;
+
         public CassandraClient(ISession session, params Mappings[] tableMappings)
         {
             this.session = session;
@@ -37,7 +39,7 @@ namespace SkbKontur.Cassandra.DistributedLock.Async.Cluster
             return await action(table).ConfigureAwait(false);
         }
 
-        private ValueTask<Table<TRowEntity>> GetTableAsync<TRowEntity>()
+        public ValueTask<Table<TRowEntity>> GetTableAsync<TRowEntity>()
         {
             if (tableWraps.TryGetValue(typeof(TRowEntity), out var existingTableWrap) && existingTableWrap.Table != null)
             {

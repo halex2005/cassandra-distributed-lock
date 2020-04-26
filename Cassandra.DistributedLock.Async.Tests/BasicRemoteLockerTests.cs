@@ -5,31 +5,38 @@ using NUnit.Framework;
 
 namespace Cassandra.DistributedLock.Async.Tests
 {
+    [TestFixture(LockImplementationToTest.TwoPhaseCommit)]
+    [TestFixture(LockImplementationToTest.LightweightTransactions)]
     public class BasicRemoteLockerTests
     {
+        private readonly LockImplementationToTest lockImpl;
+
+        public BasicRemoteLockerTests(LockImplementationToTest lockImpl)
+        {
+            this.lockImpl = lockImpl;
+        }
+
         [Test]
         public async Task TryLock_SingleLockId()
         {
-            using var tester = new RemoteLockerTester();
+            using var tester = new RemoteLockerTester(lockImpl);
             
             var lockId = Guid.NewGuid().ToString();
-            await using (var lock1 = await tester.TryGetLock(lockId))
-            {
-                Assert.That(lock1, Is.Not.Null);
-                var lock2 = await tester.TryGetLock(lockId);
-                Assert.That(lock2, Is.Null);
-            }
-                
-            await using (var lock2 = await tester.TryGetLock(lockId))
-            {
-                Assert.That(lock2, Is.Not.Null);
-            }
+            var lock1 = await tester.TryGetLock(lockId);
+            Assert.That(lock1, Is.Not.Null);
+            var lock2 = await tester.TryGetLock(lockId);
+            Assert.That(lock2, Is.Null);
+            await lock1.DisposeAsync();
+
+            lock2 = await tester.TryGetLock(lockId);
+            Assert.That(lock2, Is.Not.Null);
+            await lock2.DisposeAsync();
         }
 
         [Test]
         public async Task TryLock_DifferentLockIds()
         {
-            using var tester = new RemoteLockerTester();
+            using var tester = new RemoteLockerTester(lockImpl);
 
             var lockId1 = Guid.NewGuid().ToString();
             var lockId2 = Guid.NewGuid().ToString();
@@ -45,7 +52,7 @@ namespace Cassandra.DistributedLock.Async.Tests
         [Test]
         public async Task Lock()
         {
-            using var tester = new RemoteLockerTester();
+            using var tester = new RemoteLockerTester(lockImpl);
             var lockId = Guid.NewGuid().ToString();
 
             var lock1 = await tester.Lock(lockId);
@@ -75,7 +82,7 @@ namespace Cassandra.DistributedLock.Async.Tests
                     Attempts = 1,
                     Timeout = TimeSpan.FromSeconds(1)
                 };
-            using (var tester = new RemoteLockerTester(config))
+            using (var tester = new RemoteLockerTester(lockImpl, config))
             {
                 var lockId = Guid.NewGuid().ToString();
                 var lock1 = await tester[0].Lock(lockId);
@@ -106,7 +113,7 @@ namespace Cassandra.DistributedLock.Async.Tests
                     Attempts = 1,
                     Timeout = TimeSpan.FromSeconds(1)
                 };
-            using (var tester = new RemoteLockerTester(config))
+            using (var tester = new RemoteLockerTester(lockImpl, config))
             {
                 var lockId = Guid.NewGuid().ToString();
                 var lock1 = await tester[0].Lock(lockId);
