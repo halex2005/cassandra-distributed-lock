@@ -12,28 +12,28 @@ namespace SkbKontur.Cassandra.DistributedLock.Async.RemoteLocker
             Context = metricContext.WithTag("class", "RemoteAsyncLocker");
             if (!string.IsNullOrEmpty(keyspaceName))
                 Context = Context.WithTag("keyspace", keyspaceName);
-            LockOp = Context.CreateSummary("Lock", "operationId");
-            TryGetLockOp = Context.CreateSummary("TryGetLock", "operationId");
-            TryAcquireLockOp = Context.CreateSummary("TryAcquireLock", "operationId");
-            ReleaseLockOp = Context.CreateSummary("ReleaseLock", "operationId");
-            KeepLockAliveOp = Context.CreateSummary("KeepLock", "operationId");
-            CassandraImplTryLockOp = Context.CreateSummary("CassandraImpl.TryLock", "operationId");
-            CassandraImplRelockOp = Context.CreateSummary("CassandraImpl.Relock", "operationId");
-            CassandraImplUnlockOp = Context.CreateSummary("CassandraImpl.Unlock", "operationId");
+            LockOp = Context.CreateSummary("Lock");
+            TryGetLockOp = Context.CreateSummary("TryGetLock");
+            TryAcquireLockOp = Context.CreateSummary("TryAcquireLock");
+            ReleaseLockOp = Context.CreateSummary("ReleaseLock");
+            KeepLockAliveOp = Context.CreateSummary("KeepLock");
+            CassandraImplTryLockOp = Context.CreateSummary("CassandraImpl.TryLock");
+            CassandraImplRelockOp = Context.CreateSummary("CassandraImpl.Relock");
+            CassandraImplUnlockOp = Context.CreateSummary("CassandraImpl.Unlock");
 
             var eventsConfig = new IntegerGaugeConfig { Unit = "events/hour"};
             FreezeEvents = Context.CreateIntegerGauge("FreezeEvents","method", eventsConfig);
         }
 
         public IMetricContext Context { get; }
-        public IMetricGroup1<ITimer> LockOp { get; }
-        public IMetricGroup1<ITimer> TryGetLockOp { get; }
-        public IMetricGroup1<ITimer> TryAcquireLockOp { get; }
-        public IMetricGroup1<ITimer> ReleaseLockOp { get; }
-        public IMetricGroup1<ITimer> KeepLockAliveOp { get; }
-        public IMetricGroup1<ITimer> CassandraImplTryLockOp { get; }
-        public IMetricGroup1<ITimer> CassandraImplRelockOp { get; }
-        public IMetricGroup1<ITimer> CassandraImplUnlockOp { get; }
+        public ITimer LockOp { get; }
+        public ITimer TryGetLockOp { get; }
+        public ITimer TryAcquireLockOp { get; }
+        public ITimer ReleaseLockOp { get; }
+        public ITimer KeepLockAliveOp { get; }
+        public ITimer CassandraImplTryLockOp { get; }
+        public ITimer CassandraImplRelockOp { get; }
+        public ITimer CassandraImplUnlockOp { get; }
         public IMetricGroup1<IIntegerGauge> FreezeEvents { get; }
     }
 }

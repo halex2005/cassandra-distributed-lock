@@ -8,14 +8,14 @@ namespace SkbKontur.Cassandra.DistributedLock.Async.RemoteLocker
 {
     public static class MetricsExtensions
     {
-        public static IDisposable NewContext(this IMetricGroup1<ITimer> timer, Action<TimeSpan> finalAction, string userValue)
+        public static IDisposable NewContext(this ITimer timer, Action<TimeSpan> finalAction, string userValue)
         {
             return new TimeMeasuringContext(timer, finalAction, userValue);
         }
 
         private struct TimeMeasuringContext : IDisposable
         {
-            public TimeMeasuringContext(IMetricGroup1<ITimer> timer, Action<TimeSpan> finalAction, string userValue)
+            public TimeMeasuringContext(ITimer timer, Action<TimeSpan> finalAction, string userValue)
             {
                 this.timer = timer;
                 this.finalAction = finalAction;
@@ -31,12 +31,12 @@ namespace SkbKontur.Cassandra.DistributedLock.Async.RemoteLocker
                 {
                     disposed = true;
                     stopwatch.Stop();
-                    timer.For(userValue).Report(stopwatch.Elapsed);
+                    timer.Report(stopwatch.Elapsed);
                     finalAction(stopwatch.Elapsed);
                 }
             }
 
-            private readonly IMetricGroup1<ITimer> timer;
+            private readonly ITimer timer;
             private readonly Action<TimeSpan> finalAction;
             private readonly string userValue;
             private readonly Stopwatch stopwatch;
